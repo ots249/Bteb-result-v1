@@ -1,0 +1,91 @@
+import express from 'express';
+import { createServer as createViteServer } from 'vite';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  // Proxy API route to avoid CORS
+  app.get('/api/proxy/results', async (req, res) => {
+    const { roll, curriculumId } = req.query;
+    if (!roll || !curriculumId) {
+      return res.status(400).json({ success: false, message: 'Missing parameters' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+
+    try {
+      const targetUrl = `https://btebresultszone.com/api/student-results?roll=${roll}&curriculumId=${curriculumId}`;
+      console.log(`Proxying request to: ${targetUrl}`);
+      
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Sec-Ch-Ua': '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+          'Sec-Ch-Ua-Mobile': '?0',
+          'Sec-Ch-Ua-Platform': '"Windows"',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-origin',
+          'Referer': 'https://btebresultszone.com/',
+          'Origin': 'https://btebresultszone.com'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error('Proxy error details:', error);
+      
+      let message = 'Failed to fetch results from BTEB server';
+      if (error.name === 'AbortError') {
+        message = 'Connection timed out. The BTEB server is taking too long to respond.';
+      } else if (error.message?.includes('522')) {
+        message = 'The BTEB server is currently unreachable (522 Connection Timeout). Please try again in a few minutes.';
+      }
+
+      res.status(500).json({ 
+        success: false, 
+        message,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), 'dist');
+    app.use(express.static(distPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(distPath, 'index.html'));
+    });
+  }
+
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
