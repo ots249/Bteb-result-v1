@@ -41,6 +41,5 @@ export interface StudentData {
 
 export interface ApiResponse {
   success: boolean;
-  message?: string;
   data: StudentData[];
 }
