@@ -171,8 +171,13 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <footer className="mt-auto py-8 text-gray-400 text-sm">
-        &copy; {new Date().getFullYear()} Oahid Towsif Shamol • Clean & Fast
+      <footer className="w-full py-6 mt-auto bg-white/50 backdrop-blur-sm border-t border-gray-200/50 flex flex-col items-center justify-center gap-1">
+        <p className="text-gray-500 font-medium text-sm">
+          &copy; {new Date().getFullYear()} Oahid Towsif Shamol
+        </p>
+        <p className="text-gray-400 text-xs">
+          Clean & Fast • Student Results Portal
+        </p>
       </footer>
     </div>
   );
@@ -268,7 +273,11 @@ function SemesterCard({ semester }: { semester: SemesterResult }) {
                       {getOrdinal(sub.originSemester)}
                     </span>
                   )}
-                  <span className="bg-gray-50 text-gray-400 text-xs px-2 py-1 rounded-lg border border-gray-100 shadow-sm font-medium">
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border shadow-sm ${
+                    sub.type === 'T' 
+                      ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
+                      : 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100'
+                  }`}>
                     {sub.type === 'T' ? 'Theory' : 'Practical'}
                   </span>
                 </div>
