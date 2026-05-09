@@ -273,13 +273,13 @@ function SemesterCard({ semester }: { semester: SemesterResult }) {
                       {getOrdinal(sub.originSemester)}
                     </span>
                   )}
-                  <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border shadow-sm ${
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border shadow-sm ${
                     sub.type === 'T' 
-                      ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
-                      : 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100'
+                      ? 'bg-[#eef2ff] text-[#4338ca] border-[#e0e7ff]' 
+                      : 'bg-[#fdf4ff] text-[#a21caf] border-[#fae8ff]'
                   }`}>
                     {sub.type === 'T' ? 'Theory' : 'Practical'}
-                  </span>
+                  </div>
                 </div>
               </div>
             ))}

@@ -1,6 +1,6 @@
 {
-  "name": "BTEB Result Zone",
-  "description": "Check Bangladesh Technical Education Board (BTEB) diploma results with a clean and modern interface.",
+  "name": "BTEB Results",
+  "description": "Fast and clean BTEB Diploma Result Checker. Access Bangladesh Technical Education Board semester results, GPA, and subject-wise fail lists instantly.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
