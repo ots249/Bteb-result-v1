@@ -35,19 +35,37 @@ export default function App() {
     setError(null);
     setResult(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+
     try {
-      const response = await fetch(`/api/proxy/results?roll=${roll}&curriculumId=diploma_in_engineering`);
+      const response = await fetch(`/api/proxy/results?roll=${roll}&curriculumId=diploma_in_engineering`, {
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error (${response.status})`);
+      }
+
       const data: ApiResponse = await response.json();
 
-      if (data.success && data.data.length > 0) {
+      if (data.success && data.data && data.data.length > 0) {
         setResult(data.data[0]);
       } else {
-        setError('No result found for this roll number.');
+        setError(data.message || 'No result found for this roll number.');
       }
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch results. Please try again later.');
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      if (err.name === 'AbortError') {
+        setError('Server is taking too long to respond. Please try again later.');
+      } else if (!navigator.onLine) {
+        setError('No internet connection. Please check your network.');
+      } else {
+        setError(err.message || 'Failed to fetch results. The server might be down, please try again.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -96,13 +114,16 @@ export default function App() {
           </form>
 
           {error && (
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-500 text-center mt-4 text-sm font-medium"
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600"
             >
-              {error}
-            </motion.p>
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-medium leading-relaxed">
+                {error}
+              </p>
+            </motion.div>
           )}
         </motion.div>
       )}
