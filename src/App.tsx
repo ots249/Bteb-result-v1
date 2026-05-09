@@ -78,16 +78,17 @@ export default function App() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Enter Roll Number"
+                placeholder="Board Roll (e.g. 240363)"
                 value={roll}
-                onChange={(e) => setRoll(e.target.value)}
+                maxLength={6}
+                onChange={(e) => setRoll(e.target.value.replace(/\D/g, ''))}
                 className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 pl-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
             <button
               type="submit"
-              disabled={loading || !roll}
+              disabled={loading || roll.length !== 6}
               className="w-full h-14 bg-[#1e40af] hover:bg-[#1d4ed8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-lg transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Check Result'}
@@ -171,7 +172,7 @@ export default function App() {
       </AnimatePresence>
 
       <footer className="mt-auto py-8 text-gray-400 text-sm">
-        &copy; {new Date().getFullYear()} BTEB Result Zone • Clean & Fast
+        &copy; {new Date().getFullYear()} Oahid Towsif Shamol • Clean & Fast
       </footer>
     </div>
   );
