@@ -35,19 +35,37 @@ export default function App() {
     setError(null);
     setResult(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
+
     try {
-      const response = await fetch(`/api/proxy/results?roll=${roll}&curriculumId=diploma_in_engineering`);
+      const response = await fetch(`/api/proxy/results?roll=${roll}&curriculumId=diploma_in_engineering`, {
+        signal: controller.signal
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error (${response.status})`);
+      }
+
       const data: ApiResponse = await response.json();
 
-      if (data.success && data.data.length > 0) {
+      if (data.success && data.data && data.data.length > 0) {
         setResult(data.data[0]);
       } else {
-        setError('No result found for this roll number.');
+        setError(data.message || 'No result found for this roll number.');
       }
-    } catch (err) {
-      console.error(err);
-      setError('Failed to fetch results. Please try again later.');
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      if (err.name === 'AbortError') {
+        setError('Server is taking too long to respond. Please try again later.');
+      } else if (!navigator.onLine) {
+        setError('No internet connection. Please check your network.');
+      } else {
+        setError(err.message || 'Failed to fetch results. The server might be down, please try again.');
+      }
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
@@ -78,16 +96,17 @@ export default function App() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Enter Roll Number"
+                placeholder="Board Roll (e.g. 240363)"
                 value={roll}
-                onChange={(e) => setRoll(e.target.value)}
+                maxLength={6}
+                onChange={(e) => setRoll(e.target.value.replace(/\D/g, ''))}
                 className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 pl-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             </div>
             <button
               type="submit"
-              disabled={loading || !roll}
+              disabled={loading || roll.length !== 6}
               className="w-full h-14 bg-[#1e40af] hover:bg-[#1d4ed8] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-2xl font-bold text-lg transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Check Result'}
@@ -95,13 +114,16 @@ export default function App() {
           </form>
 
           {error && (
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-500 text-center mt-4 text-sm font-medium"
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600"
             >
-              {error}
-            </motion.p>
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p className="text-sm font-medium leading-relaxed">
+                {error}
+              </p>
+            </motion.div>
           )}
         </motion.div>
       )}
@@ -170,8 +192,13 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <footer className="mt-auto py-8 text-gray-400 text-sm">
-        &copy; {new Date().getFullYear()} BTEB Result Zone • Clean & Fast
+      <footer className="w-full py-6 mt-auto bg-white/50 backdrop-blur-sm border-t border-gray-200/50 flex flex-col items-center justify-center gap-1">
+        <p className="text-gray-500 font-medium text-sm">
+          &copy; {new Date().getFullYear()} Oahid Towsif Shamol
+        </p>
+        <p className="text-gray-400 text-xs">
+          Clean & Fast • Student Results Portal
+        </p>
       </footer>
     </div>
   );
@@ -267,9 +294,13 @@ function SemesterCard({ semester }: { semester: SemesterResult }) {
                       {getOrdinal(sub.originSemester)}
                     </span>
                   )}
-                  <span className="bg-gray-50 text-gray-400 text-xs px-2 py-1 rounded-lg border border-gray-100 shadow-sm font-medium">
+                  <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-tight border shadow-sm ${
+                    sub.type === 'T' 
+                      ? 'bg-[#eef2ff] text-[#4338ca] border-[#e0e7ff]' 
+                      : 'bg-[#fdf4ff] text-[#a21caf] border-[#fae8ff]'
+                  }`}>
                     {sub.type === 'T' ? 'Theory' : 'Practical'}
-                  </span>
+                  </div>
                 </div>
               </div>
             ))}
