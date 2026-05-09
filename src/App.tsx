@@ -26,11 +26,34 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StudentData | null>(null);
+  const [history, setHistory] = useState<string[]>([]);
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('bteb_search_history');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  const addToHistory = (r: string) => {
+    setHistory(prev => {
+      const newHistory = [r, ...prev.filter(item => item !== r)].slice(0, 5);
+      localStorage.setItem('bteb_search_history', JSON.stringify(newHistory));
+      return newHistory;
+    });
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('bteb_search_history');
+  };
+
+  const handleSearch = async (e?: React.FormEvent, searchRoll?: string) => {
     if (e) e.preventDefault();
-    if (!roll) return;
+    const finalRoll = searchRoll || roll;
+    if (finalRoll.length !== 6) return;
 
+    if (searchRoll) setRoll(searchRoll);
     setLoading(true);
     setError(null);
     setResult(null);
@@ -39,15 +62,19 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
 
     try {
-      const response = await fetch(`/api/proxy/results?roll=${roll}&curriculumId=diploma_in_engineering`, {
+      const response = await fetch(`/api/proxy/results?roll=${finalRoll}&curriculumId=diploma_in_engineering`, {
         signal: controller.signal
       });
       
       if (!response.ok) {
         let msg = `Server error (${response.status})`;
+        if (response.status === 404) msg = "Result not found (404)";
+        if (response.status === 503 || response.status === 502) msg = "BTEB server overloaded (503). Try again later.";
+        if (response.status === 429) msg = "Too many requests (429). Please wait.";
+        
         try {
           const errorData = await response.json();
-          msg = errorData.message || msg;
+          msg = errorData.message ? `${errorData.message} (${response.status})` : msg;
         } catch (e) {
           // ignore if not json
         }
@@ -58,6 +85,7 @@ export default function App() {
 
       if (data.success && data.data && data.data.length > 0) {
         setResult(data.data[0]);
+        addToHistory(finalRoll);
       } else {
         setError(data.message || 'No result found for this roll number.');
       }
@@ -82,7 +110,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] text-[#1f2937] font-sans p-4 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-[#f3f4f6] text-[#1f2937] font-sans p-2 md:p-8 flex flex-col items-center">
       {/* Header / Search Area */}
       {!result && (
         <motion.div 
@@ -119,6 +147,34 @@ export default function App() {
             </button>
           </form>
 
+          {/* Search History */}
+          {history.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between mb-3 px-1">
+                <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> RECENT SEARCHES
+                </h3>
+                <button 
+                  onClick={clearHistory}
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider"
+                >
+                  Clear All
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {history.map((hRoll) => (
+                  <button
+                    key={hRoll}
+                    onClick={() => handleSearch(undefined, hRoll)}
+                    className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-gray-600 font-bold text-sm hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all flex items-center gap-1.5"
+                  >
+                    {hRoll}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
@@ -151,7 +207,7 @@ export default function App() {
               <X className="w-6 h-6 text-gray-400" />
             </button>
 
-            <div className="p-6 pt-10">
+            <div className="p-4 pt-10">
               {/* Profile Header */}
               <div className="flex flex-col items-center text-center mb-6">
                 <h2 className="text-2xl font-bold text-[#4B5563] mb-3 tracking-tight flex items-center justify-center gap-2">
@@ -176,13 +232,13 @@ export default function App() {
 
               {/* Status Alert */}
               {result.currentFailedSubjects.length > 0 ? (
-                <div className="bg-[#fff1f2] border border-[#ffe4e6] rounded-xl py-4 px-6 text-center mb-6">
+                <div className="bg-[#fff1f2] border border-[#ffe4e6] rounded-xl py-4 px-4 text-center mb-6">
                   <p className="text-[#be123c] font-bold text-lg tracking-tight">
                     {result.currentFailedSubjects.length} {result.currentFailedSubjects.length === 1 ? 'subject' : 'subjects'} yet to pass
                   </p>
                 </div>
               ) : (
-                <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-xl py-4 px-6 text-center mb-6">
+                <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-xl py-4 px-4 text-center mb-6">
                   <p className="text-[#15803d] font-bold text-lg tracking-tight">Passed Successfully!</p>
                 </div>
               )}
@@ -241,7 +297,7 @@ function SemesterCard({ semester }: { semester: SemesterResult }) {
   const currentSemFailedCount = displayResult.failedSubjects?.filter(s => s.originSemester === semester.semester && !s.passed).length || 0;
 
   return (
-    <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm overflow-hidden">
+    <div className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -280,17 +336,17 @@ function SemesterCard({ semester }: { semester: SemesterResult }) {
             {displayResult.failedSubjects.map((sub, i) => (
               <div 
                 key={i} 
-                className="flex items-center justify-between p-3 border-b border-gray-50 last:border-0 relative"
+                className="flex items-center justify-between p-2.5 border-b border-gray-50 last:border-0 relative"
               >
                 {/* Side Indicator */}
                 <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${sub.passed ? 'bg-[#4ade80]' : 'bg-[#f87171]'}`} />
                 
                 <div className="flex items-center gap-3 pl-2">
-                  <span className="text-[#64748b] font-medium text-base w-12">{sub.subCode}</span>
+                  <span className="text-[#64748b] font-medium text-sm w-12">{sub.subCode}</span>
                   <div className={`px-3 py-1.5 rounded-xl ${
                     sub.passed ? 'bg-[#f0fdf4] text-[#166534]' : 'bg-[#fff1f2] text-[#991b1b]'
                   }`}>
-                    <span className="font-bold text-[15px]">{sub.subName}</span>
+                    <span className={`font-bold text-sm ${sub.passed ? 'line-through opacity-60' : ''}`}>{sub.subName}</span>
                   </div>
                 </div>
 
