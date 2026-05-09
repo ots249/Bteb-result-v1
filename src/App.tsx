@@ -44,8 +44,14 @@ export default function App() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Server error (${response.status})`);
+        let msg = `Server error (${response.status})`;
+        try {
+          const errorData = await response.json();
+          msg = errorData.message || msg;
+        } catch (e) {
+          // ignore if not json
+        }
+        throw new Error(msg);
       }
 
       const data: ApiResponse = await response.json();

@@ -10,6 +10,17 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+
+  // Health check
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
   // Proxy API route to avoid CORS
   app.get('/api/proxy/results', async (req, res) => {
     const { roll, curriculumId } = req.query;
@@ -43,11 +54,20 @@ async function startServer() {
         }
       });
 
+      const data = await response.json().catch(() => null);
+      
       if (!response.ok) {
-        throw new Error(`API error ${response.status}: ${response.statusText}`);
+        let message = `BTEB server returned ${response.status}`;
+        if (response.status === 404) message = 'Result not found. Please check your roll number.';
+        if (response.status === 403 || response.status === 429) message = 'BTEB server is limiting requests. Try again in a minute.';
+        
+        return res.status(response.status).json({
+          success: false,
+          message,
+          data: data || []
+        });
       }
 
-      const data = await response.json();
       res.json(data);
     } catch (error: any) {
       console.error('Proxy error details:', error);
