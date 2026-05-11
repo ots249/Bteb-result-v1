@@ -19,7 +19,8 @@ import {
   ChevronDown,
   Check,
   Download,
-  Share2
+  Share2,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -52,11 +53,13 @@ export default function App() {
   const [curriculumId, setCurriculumId] = useState('diploma_in_engineering');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [loading, setLoading] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StudentData | null>(null);
   const [history, setHistory] = useState<{roll: string, curriculumId: string}[]>([]);
+  const [showToast, setShowToast] = useState(false);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -76,7 +79,27 @@ export default function App() {
     if (savedHistory) {
       setHistory(JSON.parse(savedHistory));
     }
+
+    // Check URL parameters for deep linking
+    const params = new URLSearchParams(window.location.search);
+    const urlRoll = params.get('roll');
+    const urlCurriculum = params.get('curriculumId');
+    if (urlRoll && urlCurriculum) {
+      setRoll(urlRoll);
+      setCurriculumId(urlCurriculum);
+      handleSearch(undefined, urlRoll, urlCurriculum);
+    }
   }, []);
+
+  // Auto-scroll to results top when result is loaded
+  useEffect(() => {
+    if (result) {
+      const timer = setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 600); // Wait for entrance animation
+      return () => clearTimeout(timer);
+    }
+  }, [result]);
 
   const addToHistory = (r: string, c: string) => {
     setHistory(prev => {
@@ -133,6 +156,12 @@ export default function App() {
         setResult(studentData);
         addToHistory(finalRoll, finalCurriculum);
         
+        // Update URL without reloading
+        const url = new URL(window.location.href);
+        url.searchParams.set('roll', finalRoll);
+        url.searchParams.set('curriculumId', finalCurriculum);
+        window.history.pushState({}, '', url);
+
         // Fetch extra info in the background
         fetchStudentInfo(finalRoll);
       } else {
@@ -177,6 +206,8 @@ export default function App() {
   const clearResults = () => {
     setResult(null);
     setRoll('');
+    // Clear URL params
+    window.history.pushState({}, '', window.location.pathname);
   };
 
   const exportAsImage = async () => {
@@ -211,14 +242,126 @@ export default function App() {
     }
   };
 
+  const shareAsLink = async () => {
+    if (!result) return;
+    
+    setSharing(true);
+    const shareUrl = new URL(window.location.origin);
+    shareUrl.searchParams.set('roll', result.roll.toString());
+    shareUrl.searchParams.set('curriculumId', curriculumId);
+    
+    const text = `Result for ${result.studentName || result.roll}: ${shareUrl.toString()}`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'BTEB Student Result',
+          text: `Check out the result for roll #${result.roll}`,
+          url: shareUrl.toString(),
+        });
+      } else {
+        await navigator.clipboard.writeText(shareUrl.toString());
+        setShowToast(true);
+        setTimeout(() => setShowToast(false), 3000);
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="min-h-screen bg-[#f3f4f6] text-[#1f2937] font-sans p-2 md:p-8 flex flex-col items-center">
+      <style>
+        {`
+          @media print {
+            @page {
+              size: A4;
+              margin: 0.5cm;
+            }
+            html, body {
+              height: 100%;
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+            }
+            body {
+              background: white !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .min-h-screen {
+              background: white !important;
+              padding: 0 !important;
+              height: 100vh !important;
+              min-height: 100vh !important;
+              display: flex !important;
+              flex-direction: column !important;
+              overflow: hidden !important;
+            }
+            .print-container {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 0.5cm !important;
+              flex: 1 !important;
+              display: block !important;
+            }
+            .export-btns, .search-container, .history-container, .toast-container, footer, .close-btn {
+              display: none !important;
+            }
+            .semester-card {
+              break-inside: avoid;
+              page-break-inside: avoid;
+              border: 1px solid #e5e7eb !important;
+              margin-bottom: 0.5rem !important;
+              padding: 0.75rem !important;
+              font-size: 0.9em;
+            }
+            .semester-card h3 {
+              font-size: 1rem !important;
+            }
+            .bg-[#1e40af] {
+              background-color: #1e40af !important;
+              color: white !important;
+            }
+            .text-white {
+              color: white !important;
+            }
+            /* Ensure the results fit */
+            .p-4.pt-20 {
+              padding-top: 1rem !important;
+            }
+          }
+        `}
+      </style>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2 z-[100]"
+          >
+            <Check className="w-4 h-4 text-green-400" />
+            <span className="text-sm font-medium">Link copied to clipboard!</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Header / Search Area */}
       {!result && (
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 mt-10"
+          className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 mt-10 search-container"
         >
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 bg-[#1e40af] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-100">
@@ -280,6 +423,8 @@ export default function App() {
               <div className="relative">
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Board Roll (e.g. 240363)"
                   value={roll}
                   maxLength={6}
@@ -300,7 +445,7 @@ export default function App() {
 
           {/* Search History */}
           {history.length > 0 && (
-            <div className="mt-8">
+            <div className="mt-8 history-container">
               <div className="flex items-center justify-between mb-3 px-1">
                 <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
                   <Clock className="w-4 h-4" /> RECENT SEARCHES
@@ -350,10 +495,25 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100 mb-20"
+            className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100 mb-20 print-container"
           >
             {/* Action Buttons */}
             <div className="absolute top-6 right-6 flex items-center gap-2 z-10 export-btns">
+              <button 
+                onClick={handlePrint}
+                className="p-2 h-11 w-11 rounded-full bg-white hover:bg-gray-50 border border-gray-100 flex items-center justify-center transition-all shadow-sm"
+                title="Print Result"
+              >
+                <Printer className="w-5 h-5 text-green-600" />
+              </button>
+              <button 
+                onClick={shareAsLink}
+                disabled={sharing}
+                className="p-2 h-11 w-11 rounded-full bg-white hover:bg-gray-50 border border-gray-100 flex items-center justify-center transition-all shadow-sm"
+                title="Share Link"
+              >
+                {sharing ? <Loader2 className="w-5 h-5 text-indigo-500 animate-spin" /> : <Share2 className="w-5 h-5 text-indigo-500" />}
+              </button>
               <button 
                 onClick={exportAsImage}
                 disabled={exporting}
@@ -371,10 +531,10 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-4 pt-10">
+            <div className="p-4 pt-20">
               {/* Profile Header */}
-              <div className="flex flex-col items-center text-center mb-6">
-                <h2 className="text-2xl font-bold text-[#4B5563] mb-3 tracking-tight flex items-center justify-center gap-2">
+              <div className="flex flex-col items-center text-center mb-8">
+                <h2 className="text-3xl font-black text-[#1f2937] mb-2 tracking-tighter flex items-center justify-center gap-2">
                   <span className="text-[#6B7280] font-normal">#</span>
                   {result.roll}
                 </h2>
@@ -449,8 +609,10 @@ export default function App() {
 
               {/* Semester Results List */}
               <div className="space-y-4">
-                {result.semesterResults.map((sem) => (
-                  <SemesterCard key={sem.semester} semester={sem} regulation={result.regulation} />
+                {[...result.semesterResults]
+                  .sort((a, b) => b.semester - a.semester)
+                  .map((sem) => (
+                    <SemesterCard key={sem.semester} semester={sem} regulation={result.regulation} />
                 ))}
               </div>
             </div>
@@ -505,7 +667,7 @@ function SemesterCard({ semester, regulation }: any) {
   const currentSemFailedCount = displayResult.failedSubjects?.filter(s => s.originSemester === semester.semester && !s.passed).length || 0;
 
   return (
-    <div className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm overflow-hidden">
+    <div className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm overflow-hidden semester-card">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
