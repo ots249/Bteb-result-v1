@@ -89,6 +89,36 @@ async function startServer() {
     }
   });
 
+  // Proxy API route for extra student information
+  app.get('/api/proxy/student-info', async (req, res) => {
+    const { roll } = req.query;
+    if (!roll) {
+      return res.status(400).json({ success: false, message: 'Missing roll parameter' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+    try {
+      const extraInfoUrl = `https://script.google.com/macros/s/AKfycbwrLxKMKqLeFB9YlNLxMukpKn3eENPtvbdsO3zQwdDyJYqhylJRyxpyE3qmlgzxdw/exec?roll=${roll}`;
+      const extraResponse = await fetch(extraInfoUrl, { 
+        signal: controller.signal,
+        redirect: 'follow'
+      });
+      
+      if (extraResponse.ok) {
+        const extraData = await extraResponse.json();
+        return res.json(extraData);
+      }
+      res.status(extraResponse.status).json({ success: false, message: 'Failed to fetch student info' });
+    } catch (error: any) {
+      console.error('Student info proxy error:', error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

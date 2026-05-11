@@ -20,6 +20,7 @@ export interface SemesterResultRecord {
   instituteCode: number;
   failedSubjects?: FailedSubject[];
   gpa?: number;
+  cgpa?: number;
   republished: boolean;
 }
 
@@ -37,6 +38,8 @@ export interface StudentData {
   currentFailedSubjects: FailedSubject[];
   semesterResults: SemesterResult[];
   latestResults: any[]; // The sample shows this but semesterResults is more structured for UI
+  studentName?: string;
+  technology?: string;
 }
 
 export interface ApiResponse {
