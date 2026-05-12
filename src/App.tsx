@@ -56,7 +56,7 @@ export default function App() {
   const [sharing, setSharing] = useState(false);
   const [loading, setLoading] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; subtext?: string; icon?: React.ReactNode } | null>(null);
   const [result, setResult] = useState<StudentData | null>(null);
   const [history, setHistory] = useState<{roll: string, curriculumId: string}[]>([]);
   const [showToast, setShowToast] = useState(false);
@@ -135,18 +135,29 @@ export default function App() {
       });
       
       if (!response.ok) {
-        let msg = `Server error (${response.status})`;
-        if (response.status === 404) msg = "Result not found (404)";
-        if (response.status === 503 || response.status === 502) msg = "BTEB server overloaded (503). Try again later.";
-        if (response.status === 429) msg = "Too many requests (429). Please wait.";
+        let msg = "Something went wrong";
+        let sub = "We couldn't reach the BTEB server at this moment.";
+        
+        if (response.status === 404) {
+          msg = "Result not found";
+          sub = "Check if the Board Roll number or Curriculum selection is correct.";
+        } else if (response.status === 503 || response.status === 502) {
+          msg = "BTEB Server Busy";
+          sub = "The board server is currently overloaded. Please try again after 1 or 2 minutes.";
+        } else if (response.status === 429) {
+          msg = "Too many requests";
+          sub = "You've made too many requests. Please wait a moment before trying again.";
+        } else if (response.status === 403) {
+          msg = "Access Forbidden";
+          sub = "BTEB server is limiting requests from our server. Try again in a minute.";
+        }
         
         try {
           const errorData = await response.json();
-          msg = errorData.message ? `${errorData.message} (${response.status})` : msg;
-        } catch (e) {
-          // ignore if not json
-        }
-        throw new Error(msg);
+          if (errorData.message) msg = errorData.message;
+        } catch (e) {}
+
+        throw { message: msg, subtext: sub };
       }
 
       const data: ApiResponse = await response.json();
@@ -167,16 +178,28 @@ export default function App() {
           fetchStudentInfo(finalRoll);
         }
       } else {
-        setError(data.message || 'No result found for this roll number.');
+        setError({ 
+          message: data.message || 'No result found', 
+          subtext: 'Double check the roll number or try a different curriculum.' 
+        });
       }
     } catch (err: any) {
       console.error('Fetch error:', err);
       if (err.name === 'AbortError') {
-        setError('Server is taking too long to respond. Please try again later.');
+        setError({ 
+          message: 'Request Timeout', 
+          subtext: 'The server is taking too long. Check your internet or try again later.' 
+        });
       } else if (!navigator.onLine) {
-        setError('No internet connection. Please check your network.');
+        setError({ 
+          message: 'No Connection', 
+          subtext: 'It seems you are offline. Check your internet and try again.' 
+        });
       } else {
-        setError(err.message || 'Failed to fetch results. The server might be down, please try again.');
+        setError({ 
+          message: err.message || 'Error occurred', 
+          subtext: err.subtext || 'An unexpected error happened while fetching results.' 
+        });
       }
     } finally {
       clearTimeout(timeoutId);
@@ -532,16 +555,39 @@ export default function App() {
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mt-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600"
+              className="mt-6 p-5 bg-red-50 border border-red-100 rounded-3xl flex items-start gap-4 text-red-700 shadow-sm"
             >
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p className="text-sm font-medium leading-relaxed">
-                {error}
-              </p>
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[17px] font-black leading-tight mb-1">
+                  {error.message}
+                </p>
+                {error.subtext && (
+                  <p className="text-sm font-bold text-red-600/70 leading-snug">
+                    {error.subtext}
+                  </p>
+                )}
+              </div>
             </motion.div>
           )}
         </motion.div>
       )}
+
+      {/* Loading Skeleton */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="w-full max-w-lg mt-6"
+          >
+            <ResultSkeleton />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Result Display */}
       <AnimatePresence>
@@ -697,6 +743,52 @@ export default function App() {
           Clean & Fast • Student Results Portal
         </p>
       </footer>
+    </div>
+  );
+}
+
+function ResultSkeleton() {
+  return (
+    <div className="w-full bg-white rounded-[2rem] shadow-xl overflow-hidden border border-gray-100 p-6 md:p-8 animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-24 h-8 bg-gray-200 rounded-lg mb-4" />
+        <div className="w-40 h-6 bg-gray-100 rounded-md mb-2" />
+        <div className="w-32 h-4 bg-gray-50 rounded-md" />
+      </div>
+
+      {/* Info Rows */}
+      <div className="space-y-4 mb-8">
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-4 h-4 bg-gray-200 rounded-full" />
+          <div className="w-48 h-4 bg-gray-100 rounded-md" />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-4 h-4 bg-gray-200 rounded-full" />
+          <div className="w-32 h-4 bg-gray-100 rounded-md" />
+        </div>
+        <div className="flex items-center justify-center gap-2">
+          <div className="w-4 h-4 bg-gray-200 rounded-full" />
+          <div className="w-64 h-4 bg-gray-100 rounded-md" />
+        </div>
+      </div>
+
+      {/* Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="border border-gray-100 rounded-2xl p-4 space-y-3">
+            <div className="flex justify-between">
+              <div className="w-20 h-5 bg-gray-200 rounded-md" />
+              <div className="w-16 h-5 bg-green-50 rounded-full" />
+            </div>
+            <div className="w-full h-3 bg-gray-100 rounded-md" />
+            <div className="space-y-2 mt-4">
+              <div className="w-full h-8 bg-gray-50 rounded-lg" />
+              <div className="w-full h-8 bg-gray-50 rounded-lg" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
