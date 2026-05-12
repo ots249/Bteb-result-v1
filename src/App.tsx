@@ -60,6 +60,18 @@ export default function App() {
   const [result, setResult] = useState<StudentData | null>(null);
   const [history, setHistory] = useState<{roll: string, curriculumId: string}[]>([]);
   const [showToast, setShowToast] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -449,6 +461,12 @@ export default function App() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900">BTEB Results</h1>
             <p className="text-gray-500 text-sm mt-1">Board Exam Results Portal</p>
+            {!isOnline && (
+              <div className="mt-4 px-4 py-1.5 bg-amber-50 border border-amber-100 rounded-full flex items-center gap-2 text-amber-700 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Offline Mode</span>
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSearch} className="space-y-5">
@@ -641,6 +659,13 @@ export default function App() {
                   <span className="text-[#6B7280] font-normal">#</span>
                   {result.roll}
                 </h2>
+                
+                {!isOnline && (
+                  <div className="mb-4 px-3 py-1 bg-amber-50 border border-amber-100 rounded-full flex items-center gap-2 text-amber-700 animate-pulse inline-flex">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Offine Result (Cached)</span>
+                  </div>
+                )}
 
                 {(result.studentName || result.technology) && (
                   <div className="mb-4 space-y-1">

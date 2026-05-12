@@ -1,0 +1,21 @@
+{
+  "name": "BTEB Result Checker",
+  "short_name": "BTEB Result",
+  "description": "Fast and clean BTEB diploma result portal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/graduation-cap.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/graduation-cap.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

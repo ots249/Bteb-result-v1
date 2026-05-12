@@ -5,11 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Check BTEB Diploma in Engineering results instantly. Fast, clean, and mobile-friendly result portal for BTEB students." />
     <meta name="keywords" content="BTEB Results, Diploma Results, BTEB Diploma Result Checker, Bangladesh Technical Education Board, Polytechnic Result" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#1e40af" />
     <title>BTEB Results - Fast Diploma Result Portal</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
   </body>
 </html>
 
