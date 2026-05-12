@@ -162,8 +162,10 @@ export default function App() {
         url.searchParams.set('curriculumId', finalCurriculum);
         window.history.pushState({}, '', url);
 
-        // Fetch extra info in the background
-        fetchStudentInfo(finalRoll);
+        // Fetch extra info in the background (Only for Diploma in Engineering)
+        if (finalCurriculum === 'diploma_in_engineering') {
+          fetchStudentInfo(finalRoll);
+        }
       } else {
         setError(data.message || 'No result found for this roll number.');
       }
@@ -216,7 +218,7 @@ export default function App() {
     setExporting(true);
     try {
       // Add a small delay to ensure everything is rendered
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const filter = (node: HTMLElement) => {
         const isCloseBtn = node.classList?.contains('close-btn');
@@ -227,7 +229,7 @@ export default function App() {
       const dataUrl = await htmlToImage.toPng(resultRef.current, {
         quality: 1,
         pixelRatio: 3,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#ffffff',
         filter: filter as any,
       });
       
@@ -276,68 +278,123 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f4f6] text-[#1f2937] font-sans p-2 md:p-8 flex flex-col items-center">
+    <div className="min-h-screen bg-[#f3f4f6] text-[#1f2937] font-sans p-4 md:p-8 flex flex-col items-center">
       <style>
         {`
-          @media print {
+          @media print, .export-mode {
             @page {
               size: A4;
-              margin: 0.5cm;
+              margin: 0.8cm;
             }
             html, body {
-              height: 100%;
+              height: auto !important;
               margin: 0 !important;
               padding: 0 !important;
-              overflow: hidden !important;
+              overflow: visible !important;
+              background: white !important;
             }
             body {
-              background: white !important;
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
             .min-h-screen {
               background: white !important;
               padding: 0 !important;
-              height: 100vh !important;
-              min-height: 100vh !important;
-              display: flex !important;
-              flex-direction: column !important;
-              overflow: hidden !important;
+              height: auto !important;
+              min-height: 0 !important;
+              display: block !important;
             }
             .print-container {
               width: 100% !important;
-              max-width: 100% !important;
-              margin: 0 !important;
+              max-width: 1000px !important;
+              margin: 0 auto !important;
               box-shadow: none !important;
               border: none !important;
               padding: 0.5cm !important;
-              flex: 1 !important;
               display: block !important;
+              background: white !important;
             }
             .export-btns, .search-container, .history-container, .toast-container, footer, .close-btn {
               display: none !important;
+            }
+            /* Grid Layout */
+            .print-grid-layout {
+              display: grid !important;
+              grid-template-columns: repeat(3, 1fr) !important;
+              gap: 12px !important;
+              align-items: stretch !important;
+            }
+            .semesters-list-container {
+              display: contents !important;
             }
             .semester-card {
               break-inside: avoid;
               page-break-inside: avoid;
               border: 1px solid #e5e7eb !important;
-              margin-bottom: 0.5rem !important;
-              padding: 0.75rem !important;
-              font-size: 0.9em;
+              margin-bottom: 0 !important;
+              padding: 12px !important;
+              font-size: 11px !important;
+              height: 100% !important;
+              background: white !important;
+              border-radius: 1rem !important;
             }
             .semester-card h3 {
-              font-size: 1rem !important;
+              font-size: 13px !important;
+              margin-bottom: 4px !important;
+            }
+            .semester-card .text-[40px] {
+              font-size: 24px !important;
+            }
+            .semester-card .text-[24px] {
+              font-size: 16px !important;
+            }
+            .total-result-card {
+              grid-column: span 1 !important;
+              margin-bottom: 0 !important;
+              padding: 12px !important;
+              height: auto !important;
+              min-height: 0 !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: center !important;
+              background-color: #1e40af !important;
+              color: white !important;
+              border-radius: 1rem !important;
+            }
+            .total-result-card span.text-4xl {
+              font-size: 28px !important;
+            }
+            .total-result-card span.text-xs {
+              font-size: 10px !important;
+            }
+            .total-result-card .text-blue-100 {
+              font-size: 11px !important;
             }
             .bg-[#1e40af] {
               background-color: #1e40af !important;
               color: white !important;
             }
-            .text-white {
-              color: white !important;
-            }
-            /* Ensure the results fit */
             .p-4.pt-20 {
-              padding-top: 1rem !important;
+              padding-top: 0.5rem !important;
+            }
+            .mb-8 {
+              margin-bottom: 1rem !important;
+            }
+            .print-footer {
+              display: block !important;
+              margin-top: 1cm;
+              border-top: 1px solid #e5e7eb;
+              padding-top: 8px;
+              font-size: 10px;
+              color: #6B7280;
+              text-align: center;
+            }
+            /* Failed subjects alert */
+            .failed-subjects-alert {
+              grid-column: 1 / -1 !important;
+              padding: 10px !important;
+              font-size: 12px !important;
+              margin-bottom: 12px !important;
             }
           }
         `}
@@ -361,7 +418,7 @@ export default function App() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md bg-white rounded-3xl shadow-sm p-8 mt-10 search-container"
+          className="w-full max-w-md bg-white rounded-[2.5rem] shadow-sm p-6 md:p-8 mt-4 md:mt-10 search-container"
         >
           <div className="flex flex-col items-center mb-8">
             <div className="w-16 h-16 bg-[#1e40af] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-100">
@@ -373,12 +430,12 @@ export default function App() {
 
           <form onSubmit={handleSearch} className="space-y-5">
             <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
-              <label className="block text-[11px] font-bold text-gray-400 ml-1 tracking-wider uppercase">Curriculum / Exam</label>
+              <label className="block text-[10px] md:text-[11px] font-bold text-gray-400 ml-1 tracking-wider uppercase">Curriculum / Exam</label>
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className={`w-full h-14 bg-white border ${dropdownOpen ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-gray-200'} rounded-2xl px-5 pl-12 flex items-center justify-between transition-all duration-200 text-[15px] font-bold text-gray-700 shadow-sm`}
+                  className={`w-full h-14 bg-white border ${dropdownOpen ? 'border-blue-500 ring-4 ring-blue-500/10' : 'border-gray-200'} rounded-2xl px-4 md:px-5 pl-12 flex items-center justify-between transition-all duration-200 text-sm md:text-[15px] font-bold text-gray-700 shadow-sm`}
                 >
                   <div className="flex items-center gap-3">
                     <BookOpen className="text-blue-500 w-5 h-5" />
@@ -419,7 +476,7 @@ export default function App() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-bold text-gray-400 ml-1 tracking-wider uppercase">Board Roll</label>
+              <label className="block text-[10px] md:text-[11px] font-bold text-gray-400 ml-1 tracking-wider uppercase">Board Roll</label>
               <div className="relative">
                 <input
                   type="text"
@@ -429,7 +486,7 @@ export default function App() {
                   value={roll}
                   maxLength={6}
                   onChange={(e) => setRoll(e.target.value.replace(/\D/g, ''))}
-                  className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 pl-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-lg font-medium"
+                  className="w-full h-14 bg-gray-50 border border-gray-200 rounded-2xl px-5 pl-12 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-base md:text-lg font-medium"
                 />
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
               </div>
@@ -462,7 +519,7 @@ export default function App() {
                   <button
                     key={i}
                     onClick={() => handleSearch(undefined, h.roll, h.curriculumId)}
-                    className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-gray-600 font-bold text-sm hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all flex items-center gap-1.5"
+                    className="px-4 py-2.5 md:py-2 bg-gray-50 border border-gray-100 rounded-xl text-gray-600 font-bold text-sm hover:bg-blue-50 hover:border-blue-100 hover:text-blue-600 transition-all flex items-center gap-1.5"
                   >
                     {h.roll}
                   </button>
@@ -495,7 +552,7 @@ export default function App() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100 mb-20 print-container"
+            className={`w-full max-w-lg bg-white rounded-[2rem] shadow-2xl overflow-hidden relative border border-gray-100 mb-20 print-container ${exporting ? 'export-mode' : ''}`}
           >
             {/* Action Buttons */}
             <div className="absolute top-6 right-6 flex items-center gap-2 z-10 export-btns">
@@ -531,10 +588,10 @@ export default function App() {
               </button>
             </div>
 
-            <div className="p-4 pt-20">
+            <div className="p-4 pt-16 md:pt-20">
               {/* Profile Header */}
-              <div className="flex flex-col items-center text-center mb-8">
-                <h2 className="text-3xl font-black text-[#1f2937] mb-2 tracking-tighter flex items-center justify-center gap-2">
+              <div className="flex flex-col items-center text-center mb-6 md:mb-8">
+                <h2 className="text-2xl md:text-3xl font-black text-[#1f2937] mb-2 tracking-tighter flex items-center justify-center gap-2">
                   <span className="text-[#6B7280] font-normal">#</span>
                   {result.roll}
                 </h2>
@@ -547,73 +604,85 @@ export default function App() {
                       </h3>
                     )}
                     {result.technology && (
-                      <p className="text-gray-500 font-bold text-xs bg-gray-100 px-3 py-1 rounded-full inline-block">
+                      <p className="text-gray-500 font-bold text-[10px] md:text-xs bg-gray-100 px-2 md:px-3 py-0.5 md:py-1 rounded-full inline-block">
                         {result.technology}
                       </p>
                     )}
                   </div>
                 )}
 
-                <div className="flex flex-col gap-1.5 text-[#6b7280] text-[14px]">
+                <div className="flex flex-col gap-1 text-[#6b7280] text-[13px] md:text-[14px]">
                   <div className="flex items-center justify-center gap-2">
-                    <BookOpen className="w-4 h-4" />
+                    <BookOpen className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     <span className="capitalize">{result.curriculumId.replace(/_/g, ' ')}</span>
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <Calendar className="w-4 h-4" />
+                    <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" />
                     <span>Regulation {result.regulation}</span>
                   </div>
                   <div className="flex items-center justify-center gap-2">
-                    <Building2 className="w-4 h-4 shrink-0" />
-                    <span>{result.institute.name}, {result.institute.district}</span>
+                    <Building2 className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
+                    <span className="truncate max-w-[250px] md:max-w-none">{result.institute.name}, {result.institute.district}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Status Alert */}
-              {(() => {
-                const eighthSem = result.semesterResults.find(s => s.semester === 8);
-                const latestResult = eighthSem?.results[0];
-                const hasCGPA = latestResult?.cgpa !== undefined;
-                const isPassed = eighthSem?.status === 'passed';
-                const isCertified = result.currentFailedSubjects.length === 0 && isPassed;
+              <div className="print-grid-layout">
+                {/* Status Alert */}
+                {(() => {
+                  const eighthSem = result.semesterResults.find(s => s.semester === 8);
+                  const latestResult = eighthSem?.results[0];
+                  const hasCGPA = latestResult?.cgpa !== undefined;
+                  const isPassed = eighthSem?.status === 'passed';
+                  const isCertified = result.currentFailedSubjects.length === 0 && isPassed;
 
-                if (result.regulation === 22 && isPassed && hasCGPA) {
-                  return (
-                    <div className="bg-[#1e40af] rounded-2xl p-5 mb-6 text-white text-center shadow-lg shadow-blue-100 flex flex-col items-center gap-1">
-                      <span className="text-blue-100/80 text-xs font-bold uppercase tracking-widest">Total Result (CGPA)</span>
-                      <span className="text-4xl font-black">{latestResult.cgpa.toFixed(2)}</span>
-                      {isCertified && (
-                        <div className="flex items-center gap-1.5 text-blue-100 text-sm font-medium mt-1">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>Diploma Completed</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                }
-                return null;
-              })()}
+                  if (result.regulation === 22 && isPassed && hasCGPA) {
+                    return (
+                      <div className="bg-[#1e40af] rounded-2xl p-5 mb-6 text-white text-center shadow-lg shadow-blue-100 flex flex-col items-center gap-1 total-result-card">
+                        <span className="text-blue-100/80 text-xs font-bold uppercase tracking-widest">Total Result (CGPA)</span>
+                        <span className="text-4xl font-black">{latestResult.cgpa.toFixed(2)}</span>
+                        {isCertified && (
+                          <div className="flex items-center gap-1.5 text-blue-100 text-sm font-medium mt-1">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>Diploma Completed</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
-              {result.currentFailedSubjects.length > 0 ? (
-                <div className="bg-[#fff1f2] border border-[#ffe4e6] rounded-xl py-4 px-4 text-center mb-6">
-                  <p className="text-[#be123c] font-bold text-lg tracking-tight">
-                    {result.currentFailedSubjects.length} {result.currentFailedSubjects.length === 1 ? 'subject' : 'subjects'} yet to pass
-                  </p>
+                {result.currentFailedSubjects.length > 0 ? (
+                  <div className="bg-[#fff1f2] border border-[#ffe4e6] rounded-xl py-4 px-4 text-center mb-6 failed-subjects-alert">
+                    <p className="text-[#be123c] font-bold text-lg tracking-tight">
+                      {result.currentFailedSubjects.length} {result.currentFailedSubjects.length === 1 ? 'subject' : 'subjects'} yet to pass
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-xl py-4 px-4 text-center mb-6 failed-subjects-alert">
+                    <p className="text-[#15803d] font-bold text-lg tracking-tight">Passed Successfully!</p>
+                  </div>
+                )}
+
+                {/* Semester Results List */}
+                <div className="space-y-3 md:space-y-4 semesters-list-container">
+                  {[...result.semesterResults]
+                    .sort((a, b) => b.semester - a.semester)
+                    .map((sem) => (
+                      <SemesterCard key={sem.semester} semester={sem} regulation={result.regulation} />
+                  ))}
                 </div>
-              ) : (
-                <div className="bg-[#f0fdf4] border border-[#dcfce7] rounded-xl py-4 px-4 text-center mb-6">
-                  <p className="text-[#15803d] font-bold text-lg tracking-tight">Passed Successfully!</p>
+              </div>
+              
+              {/* Print Only Footer */}
+              <div className="hidden print-footer">
+                <div className="flex justify-between items-center px-4">
+                  <span>Printed on: {format(new Date(), 'dd MMM yyyy, hh:mm a')}</span>
+                  <span className="font-bold">BTEB Result Checker</span>
+                  <span>Visit: {window.location.host}</span>
                 </div>
-              )}
-
-              {/* Semester Results List */}
-              <div className="space-y-4">
-                {[...result.semesterResults]
-                  .sort((a, b) => b.semester - a.semester)
-                  .map((sem) => (
-                    <SemesterCard key={sem.semester} semester={sem} regulation={result.regulation} />
-                ))}
+                <p className="mt-1 opacity-60">Note: This is a computer-generated report. For official purposes, please refer to the original marksheets issued by BTEB.</p>
               </div>
             </div>
           </motion.div>
@@ -667,12 +736,12 @@ function SemesterCard({ semester, regulation }: any) {
   const currentSemFailedCount = displayResult.failedSubjects?.filter(s => s.originSemester === semester.semester && !s.passed).length || 0;
 
   return (
-    <div className="border border-gray-100 rounded-2xl p-4 bg-white shadow-sm overflow-hidden semester-card">
+    <div className="border border-gray-100 rounded-2xl p-3 md:p-4 bg-white shadow-sm overflow-hidden semester-card">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
         <div className="flex items-center gap-2">
-          <GraduationCap className="w-6 h-6 text-[#2563eb]" />
-          <h3 className="font-bold text-lg text-[#111827]">{getOrdinal(semester.semester)} Semester</h3>
+          <GraduationCap className="w-5 h-5 md:w-6 md:h-6 text-[#2563eb]" />
+          <h3 className="font-bold text-base md:text-lg text-[#111827]">{getOrdinal(semester.semester)} Semester</h3>
         </div>
         
         {semester.status === 'failed' ? (
@@ -689,12 +758,12 @@ function SemesterCard({ semester, regulation }: any) {
       </div>
 
       {/* Date & Time Ago */}
-      <div className="flex items-center justify-between text-gray-400 mb-4 px-0.5">
-        <div className="flex items-center gap-2 text-[14px] font-medium text-[#2563eb]/80">
-          <Calendar className="w-4 h-4 text-[#6b7280]" />
+      <div className="flex items-center justify-between text-gray-400 mb-3 md:mb-4 px-0.5">
+        <div className="flex items-center gap-2 text-[12px] md:text-[14px] font-medium text-[#2563eb]/80">
+          <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#6b7280]" />
           {formattedDate}
         </div>
-        <div className="bg-[#f3f4f6] text-[#6b7280] px-2 py-0.5 rounded-lg text-[12px] font-medium grow-0">
+        <div className="bg-[#f3f4f6] text-[#6b7280] px-2 py-0.5 rounded-lg text-[10px] md:text-[12px] font-medium grow-0">
           {timeAgo}
         </div>
       </div>
@@ -713,8 +782,8 @@ function SemesterCard({ semester, regulation }: any) {
                 
                 <div className="flex items-center gap-3 pl-3">
                   <div className={sub.passed ? 'text-[#166534]' : 'text-[#991b1b]'}>
-                    <span className={`font-bold text-base ${sub.passed ? 'line-through opacity-60' : ''}`}>{sub.subName}</span>
-                    <span className="ml-1.5 text-[11px] opacity-70 font-medium whitespace-nowrap">({sub.subCode})</span>
+                    <span className={`font-bold text-sm md:text-base ${sub.passed ? 'line-through opacity-60' : ''}`}>{sub.subName}</span>
+                    <span className="ml-1.5 text-[10px] md:text-[11px] opacity-70 font-medium whitespace-nowrap">({sub.subCode})</span>
                   </div>
                 </div>
 

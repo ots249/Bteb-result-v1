@@ -24,8 +24,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
         'Referer': 'https://btebresultszone.com/',
-        'Origin': 'https://btebresultszone.com'
+        'Origin': 'https://btebresultszone.com',
+        'Connection': 'keep-alive',
+        'Cache-Control': 'max-age=0'
       }
     });
 
