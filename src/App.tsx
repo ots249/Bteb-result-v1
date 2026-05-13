@@ -20,7 +20,8 @@ import {
   Check,
   Download,
   Share2,
-  Printer
+  Printer,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -72,6 +73,44 @@ export default function App() {
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBtn, setShowInstallBtn] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBtn(true);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBtn(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      new Notification('Notifications Enabled!', {
+        body: 'You will now receive updates about BTEB results.',
+        icon: 'https://img.icons8.com/color/192/graduation-cap.png'
+      });
+    }
+  };
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -178,6 +217,18 @@ export default function App() {
         const studentData = data.data[0];
         setResult(studentData);
         addToHistory(finalRoll, finalCurriculum);
+        
+        // Notify if permission granted
+        if (Notification.permission === 'granted') {
+          try {
+            new Notification('Result Found!', {
+              body: `Results for Roll ${finalRoll} have been loaded successfully.`,
+              icon: 'https://img.icons8.com/color/192/graduation-cap.png'
+            });
+          } catch (e) {
+            console.warn('Notification failed:', e);
+          }
+        }
         
         // Update URL without reloading
         const url = new URL(window.location.href);
@@ -461,12 +512,31 @@ export default function App() {
             </div>
             <h1 className="text-2xl font-bold text-gray-900">BTEB Results</h1>
             <p className="text-gray-500 text-sm mt-1">Board Exam Results Portal</p>
-            {!isOnline && (
-              <div className="mt-4 px-4 py-1.5 bg-amber-50 border border-amber-100 rounded-full flex items-center gap-2 text-amber-700 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span className="text-[11px] font-bold uppercase tracking-wider">Offline Mode</span>
-              </div>
-            )}
+            
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {!isOnline && (
+                <div className="px-4 py-1.5 bg-amber-50 border border-amber-100 rounded-full flex items-center gap-2 text-amber-700 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Offline Mode</span>
+                </div>
+              )}
+              {showInstallBtn && (
+                <button 
+                  onClick={handleInstallClick}
+                  className="px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full flex items-center gap-2 text-blue-700 hover:bg-blue-100 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Install App</span>
+                </button>
+              )}
+              <button 
+                onClick={requestNotificationPermission}
+                className="px-4 py-1.5 bg-gray-50 border border-gray-100 rounded-full flex items-center gap-2 text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">Enable Alerts</span>
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSearch} className="space-y-5">
