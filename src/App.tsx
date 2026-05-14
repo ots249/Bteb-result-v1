@@ -107,7 +107,7 @@ export default function App() {
     if (permission === 'granted') {
       new Notification('Notifications Enabled!', {
         body: 'You will now receive updates about BTEB results.',
-        icon: 'https://img.icons8.com/color/192/graduation-cap.png'
+        icon: 'https://i.postimg.cc/Vvd7jVtG/bteb-results-249.png'
       });
     }
   };
@@ -223,7 +223,7 @@ export default function App() {
           try {
             new Notification('Result Found!', {
               body: `Results for Roll ${finalRoll} have been loaded successfully.`,
-              icon: 'https://img.icons8.com/color/192/graduation-cap.png'
+              icon: 'https://i.postimg.cc/Vvd7jVtG/bteb-results-249.png'
             });
           } catch (e) {
             console.warn('Notification failed:', e);
@@ -507,8 +507,12 @@ export default function App() {
           className="w-full max-w-md bg-white rounded-[2.5rem] shadow-sm p-6 md:p-8 mt-4 md:mt-10 search-container"
         >
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-[#1e40af] rounded-2xl flex items-center justify-center mb-4 shadow-lg shadow-blue-100">
-              <GraduationCap className="text-white w-10 h-10" />
+            <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-xl shadow-blue-500/5 relative overflow-hidden border border-blue-50">
+              <img 
+                src="https://i.postimg.cc/Vvd7jVtG/bteb-results-249.png" 
+                alt="BTEB Result Logo" 
+                className="w-full h-full object-contain p-1"
+              />
             </div>
             <h1 className="text-2xl font-bold text-gray-900">BTEB Results</h1>
             <p className="text-gray-500 text-sm mt-1">Board Exam Results Portal</p>
@@ -523,17 +527,17 @@ export default function App() {
               {showInstallBtn && (
                 <button 
                   onClick={handleInstallClick}
-                  className="px-4 py-1.5 bg-blue-50 border border-blue-100 rounded-full flex items-center gap-2 text-blue-700 hover:bg-blue-100 transition-colors"
+                  className="px-4 py-1.5 bg-green-600 border border-green-700 rounded-full flex items-center gap-2 text-white hover:bg-green-700 shadow-sm transition-all scale-105 active:scale-95"
                 >
                   <Download className="w-4 h-4" />
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Install App</span>
+                  <span className="text-[11px] font-black uppercase tracking-wider">Install Android App</span>
                 </button>
               )}
               <button 
                 onClick={requestNotificationPermission}
-                className="px-4 py-1.5 bg-gray-50 border border-gray-100 rounded-full flex items-center gap-2 text-gray-700 hover:bg-gray-100 transition-colors"
+                className="px-4 py-1.5 bg-white border border-gray-100 rounded-full flex items-center gap-2 text-gray-700 hover:bg-gray-50 shadow-sm transition-all active:scale-95"
               >
-                <Bell className="w-4 h-4" />
+                <Bell className="w-4 h-4 text-blue-600" />
                 <span className="text-[11px] font-bold uppercase tracking-wider">Enable Alerts</span>
               </button>
             </div>
@@ -847,8 +851,8 @@ function ResultSkeleton() {
     <div className="w-full bg-white rounded-[2rem] shadow-xl overflow-hidden border border-gray-100 p-6 md:p-8 animate-pulse">
       {/* Header Skeleton */}
       <div className="flex flex-col items-center mb-8">
-        <div className="w-24 h-8 bg-gray-200 rounded-lg mb-4" />
-        <div className="w-40 h-6 bg-gray-100 rounded-md mb-2" />
+        <div className="w-20 h-20 bg-gray-200 rounded-3xl mb-4" />
+        <div className="w-40 h-8 bg-gray-100 rounded-lg mb-2" />
         <div className="w-32 h-4 bg-gray-50 rounded-md" />
       </div>
 
