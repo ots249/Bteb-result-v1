@@ -42,6 +42,28 @@ export interface StudentData {
   technology?: string;
 }
 
+export interface GroupStudentResult {
+  roll: number;
+  results: {
+    date: string;
+    semester: number;
+    gpa?: number;
+    failedSubjects: { subCode: number }[];
+  }[];
+  studentName?: string;
+}
+
+export interface GroupApiResponse {
+  success: boolean;
+  data: {
+    curriculumId: string;
+    regulation: number;
+    totalResults: number;
+    rollRanges: string;
+    studentResults: GroupStudentResult[];
+  };
+}
+
 export interface ApiResponse {
   success: boolean;
   message?: string;

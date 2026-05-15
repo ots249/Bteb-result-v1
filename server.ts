@@ -114,6 +114,55 @@ async function startServer() {
     }
   });
 
+  // Proxy API route for group results
+  app.get('/api/proxy/group-results', async (req, res) => {
+    const { rollRanges, curriculumId, regulation } = req.query;
+    if (!rollRanges || !curriculumId || !regulation) {
+      return res.status(400).json({ success: false, message: 'Missing parameters' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60 second timeout for group results as it takes longer
+
+    try {
+      const targetUrl = `https://btebresultszone.com/api/group-results?rollRanges=${rollRanges}&curriculumId=${curriculumId}&regulation=${regulation}`;
+      console.log(`Proxying group result request to: ${targetUrl}`);
+      
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Referer': 'https://btebresultszone.com/',
+          'Origin': 'https://btebresultszone.com',
+          'Connection': 'keep-alive',
+        }
+      });
+
+      const data = await response.json().catch(() => null);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({
+          success: false,
+          message: `BTEB server returned ${response.status}`,
+          data: data || []
+        });
+      }
+
+      res.json(data);
+    } catch (error: any) {
+      console.error('Group proxy error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to fetch group results',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  });
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
