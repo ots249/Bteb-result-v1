@@ -224,6 +224,8 @@ export default function App() {
     localStorage.removeItem('bteb_group_history_v1');
   };
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
   const handleSearch = async (e?: React.FormEvent, searchRoll?: string, searchCurriculum?: string) => {
     if (e) e.preventDefault();
     const finalRoll = searchRoll || roll;
@@ -262,7 +264,7 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
 
     try {
-      const response = await fetch(`/api/proxy/results?roll=${finalRoll}&curriculumId=${finalCurriculum}`, {
+      const response = await fetch(`${API_BASE_URL}/api/proxy/results?roll=${finalRoll}&curriculumId=${finalCurriculum}`, {
         signal: controller.signal
       });
       
@@ -366,7 +368,7 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const response = await fetch(`/api/proxy/results?roll=${rollToFetch}&curriculumId=${currId}`, {
+      const response = await fetch(`${API_BASE_URL}/api/proxy/results?roll=${rollToFetch}&curriculumId=${currId}`, {
         signal: controller.signal
       });
       
@@ -380,7 +382,7 @@ export default function App() {
           // Auto background info fetch if needed
           if (currId === 'diploma_in_engineering') {
              // We can use a simpler version or just fetch and update modalResult
-             const infoRes = await fetch(`/api/proxy/student-info?roll=${rollToFetch}`);
+             const infoRes = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${rollToFetch}`);
              if (infoRes.ok) {
                const extraData = await infoRes.json();
                if (extraData.success && extraData.data) {
@@ -450,7 +452,7 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
-      const response = await fetch(`/api/proxy/group-results?rollRanges=${encodeURIComponent(finalRanges)}&curriculumId=${finalCurr}&regulation=${finalReg}`, {
+      const response = await fetch(`${API_BASE_URL}/api/proxy/group-results?rollRanges=${encodeURIComponent(finalRanges)}&curriculumId=${finalCurr}&regulation=${finalReg}`, {
         signal: controller.signal
       });
 
@@ -481,7 +483,7 @@ export default function App() {
 
   const fetchStudentInfo = async (rollToFetch: string) => {
     try {
-      const response = await fetch(`/api/proxy/student-info?roll=${rollToFetch}`);
+      const response = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${rollToFetch}`);
       if (response.ok) {
         const extraData = await response.json();
         if (extraData.success && extraData.data) {
@@ -509,7 +511,7 @@ export default function App() {
       const batch = students.slice(i, i + batchSize);
       await Promise.all(batch.map(async (student) => {
         try {
-          const response = await fetch(`/api/proxy/student-info?roll=${student.roll}`);
+          const response = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${student.roll}`);
           if (response.ok) {
             const extraData = await response.json();
             if (extraData.success && extraData.data) {
