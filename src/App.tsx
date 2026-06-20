@@ -224,8 +224,6 @@ export default function App() {
     localStorage.removeItem('bteb_group_history_v1');
   };
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-
   const handleSearch = async (e?: React.FormEvent, searchRoll?: string, searchCurriculum?: string) => {
     if (e) e.preventDefault();
     const finalRoll = searchRoll || roll;
@@ -264,7 +262,7 @@ export default function App() {
     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45 second timeout
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/proxy/results?roll=${finalRoll}&curriculumId=${finalCurriculum}`, {
+      const response = await fetch(`/api/proxy/results?roll=${finalRoll}&curriculumId=${finalCurriculum}`, {
         signal: controller.signal
       });
       
@@ -358,43 +356,59 @@ export default function App() {
     const cached = history.find(h => h.roll === rollToFetch.toString() && h.curriculumId === currId);
     if (cached && cached.data) {
       setModalResult(cached.data);
-      return;
+      // If we are offline, return immediately using cache.
+      // If online, don't return so we can fetch potential updates in the background.
+      if (!isOnline) {
+        return;
+      }
     }
 
     setModalLoading(true);
-    setModalResult(null);
+    // Keep showing cached data to prevent screen flicker when updating modal
+    if (!cached) {
+      setModalResult(null);
+    }
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/proxy/results?roll=${rollToFetch}&curriculumId=${currId}`, {
+      const response = await fetch(`/api/proxy/results?roll=${rollToFetch}&curriculumId=${currId}`, {
         signal: controller.signal
       });
       
       if (response.ok) {
-        const data: ApiResponse = await response.json();
-        if (data.success && data.data && data.data.length > 0) {
-          const studentData = data.data[0];
-          setModalResult(studentData);
-          addToHistory(rollToFetch.toString(), currId, studentData);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data: ApiResponse = await response.json();
+          if (data.success && data.data && data.data.length > 0) {
+            const studentData = data.data[0];
+            setModalResult(studentData);
+            addToHistory(rollToFetch.toString(), currId, studentData);
 
-          // Auto background info fetch if needed
-          if (currId === 'diploma_in_engineering') {
-             // We can use a simpler version or just fetch and update modalResult
-             const infoRes = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${rollToFetch}`);
-             if (infoRes.ok) {
-               const extraData = await infoRes.json();
-               if (extraData.success && extraData.data) {
-                 const updatedData = {
-                   ...studentData,
-                   studentName: extraData.data['Student Name'],
-                   technology: extraData.data['Technology']
-                 };
-                 setModalResult(updatedData);
-                 addToHistory(rollToFetch.toString(), currId, updatedData);
+            // Auto background info fetch if needed
+            if (currId === 'diploma_in_engineering') {
+               const infoRes = await fetch(`/api/proxy/student-info?roll=${rollToFetch}`);
+               if (infoRes.ok) {
+                 try {
+                   const text = await infoRes.text();
+                   if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+                     const extraData = JSON.parse(text);
+                     if (extraData.success && extraData.data) {
+                       const updatedData = {
+                         ...studentData,
+                         studentName: extraData.data['Student Name'],
+                         technology: extraData.data['Technology']
+                       };
+                       setModalResult(updatedData);
+                       addToHistory(rollToFetch.toString(), currId, updatedData);
+                     }
+                   }
+                 } catch (e) {
+                   console.warn(`Failed to parse info for roll ${rollToFetch}:`, e);
+                 }
                }
-             }
+            }
           }
         }
       }
@@ -434,7 +448,11 @@ export default function App() {
       shareUrl.searchParams.set('rollRanges', finalRanges);
       window.history.pushState({}, '', shareUrl.toString());
 
-      return;
+      // If offline, return immediately using cache.
+      // If online, don't return so we can fetch potential updates in the background.
+      if (!isOnline) {
+        return;
+      }
     }
 
     // Update URL params
@@ -446,18 +464,26 @@ export default function App() {
 
     setLoading(true);
     setError(null);
-    setGroupResults(null);
+    // Only clear previous results if we don't have them in cache to maintain SWR feel
+    if (!cached) {
+      setGroupResults(null);
+    }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/proxy/group-results?rollRanges=${encodeURIComponent(finalRanges)}&curriculumId=${finalCurr}&regulation=${finalReg}`, {
+      const response = await fetch(`/api/proxy/group-results?rollRanges=${encodeURIComponent(finalRanges)}&curriculumId=${finalCurr}&regulation=${finalReg}`, {
         signal: controller.signal
       });
 
       if (!response.ok) {
         throw { message: 'Failed to fetch group results', subtext: 'BTEB server might be busy or ranges are invalid.' };
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw { message: 'Invalid Response Format', subtext: 'The server did not return a valid JSON format. BTEB might be experiencing issues.' };
       }
 
       const data: GroupApiResponse = await response.json();
@@ -483,20 +509,23 @@ export default function App() {
 
   const fetchStudentInfo = async (rollToFetch: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${rollToFetch}`);
+      const response = await fetch(`/api/proxy/student-info?roll=${rollToFetch}`);
       if (response.ok) {
-        const extraData = await response.json();
-        if (extraData.success && extraData.data) {
-          setResult(prev => {
-            if (!prev || prev.roll.toString() !== rollToFetch) return prev;
-            const updated = {
-              ...prev,
-              studentName: extraData.data['Student Name'],
-              technology: extraData.data['Technology']
-            };
-            addToHistory(rollToFetch, updated.curriculumId, updated);
-            return updated;
-          });
+        const text = await response.text();
+        if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+          const extraData = JSON.parse(text);
+          if (extraData.success && extraData.data) {
+            setResult(prev => {
+              if (!prev || prev.roll.toString() !== rollToFetch) return prev;
+              const updated = {
+                ...prev,
+                studentName: extraData.data['Student Name'],
+                technology: extraData.data['Technology']
+              };
+              addToHistory(rollToFetch, updated.curriculumId, updated);
+              return updated;
+            });
+          }
         }
       }
     } catch (error) {
@@ -511,23 +540,26 @@ export default function App() {
       const batch = students.slice(i, i + batchSize);
       await Promise.all(batch.map(async (student) => {
         try {
-          const response = await fetch(`${API_BASE_URL}/api/proxy/student-info?roll=${student.roll}`);
+          const response = await fetch(`/api/proxy/student-info?roll=${student.roll}`);
           if (response.ok) {
-            const extraData = await response.json();
-            if (extraData.success && extraData.data) {
-              const name = extraData.data['Student Name'];
-              setGroupResults(prev => {
-                if (!prev) return null;
-                const updated = {
-                  ...prev,
-                  studentResults: prev.studentResults.map(s => 
-                    s.roll === student.roll ? { ...s, studentName: name } : s
-                  )
-                };
-                // Sync with cache
-                addGroupToHistory(updated.rollRanges, updated.curriculumId, updated.regulation.toString(), updated);
-                return updated;
-              });
+            const text = await response.text();
+            if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+              const extraData = JSON.parse(text);
+              if (extraData.success && extraData.data) {
+                const name = extraData.data['Student Name'];
+                setGroupResults(prev => {
+                  if (!prev) return null;
+                  const updated = {
+                    ...prev,
+                    studentResults: prev.studentResults.map(s => 
+                      s.roll === student.roll ? { ...s, studentName: name } : s
+                    )
+                  };
+                  // Sync with cache
+                  addGroupToHistory(updated.rollRanges, updated.curriculumId, updated.regulation.toString(), updated);
+                  return updated;
+                });
+              }
             }
           }
         } catch (error) {
